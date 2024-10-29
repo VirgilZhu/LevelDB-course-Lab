@@ -526,6 +526,7 @@ target_link_libraries(db_test1 leveldb)
 
 add_executable(db_test2
         "${PROJECT_SOURCE_DIR}/test/db_test2.cc"
+        test/time.cpp
 )
 target_link_libraries(db_test2 PRIVATE leveldb)
 
@@ -534,3 +535,13 @@ add_executable(ttl_test
         "${PROJECT_SOURCE_DIR}/test/ttl_test.cc"
 )
 target_link_libraries(ttl_test PRIVATE leveldb gtest)
+
+add_executable(test_a
+        "${PROJECT_SOURCE_DIR}/test/test_a.cpp"
+)
+target_link_libraries(test_a leveldb)
+
+add_executable(time
+        "${PROJECT_SOURCE_DIR}/test/time.cpp"
+)
+target_link_libraries(time leveldb)
