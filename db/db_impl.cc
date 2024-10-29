@@ -3,6 +3,7 @@
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
 #include <chrono>
+#include <iostream>
 
 #include "db/db_impl.h"
 
@@ -985,7 +986,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
         std::string user_value = input->value().ToString();
         uint64_t now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
         if (user_value.find("_ts_") == std::string::npos) {
-          input->value() = user_value + "_ts_" + std::to_string(now + 20);
+          input->value() = user_value + "_ts_" + std::to_string(now + ttl);
         }
         else {
           uint64_t deadtime = std::stoi(user_value.substr(user_value.find("_ts_") + 4));
@@ -1134,14 +1135,14 @@ int64_t DBImpl::TEST_MaxNextLevelOverlappingBytes() {
 }
 
 /* TODO: Add TTL Version isLive() */
-Status isLive(const Slice& key, std::string* value, Status& s) {
+Status isLive(const Slice& key, std::string* value, Status& s, uint64_t ttl) {
   if (value->empty()) {
     s = Status::NotFound(key);
     return s;
   }
   uint64_t now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
   if (value->find("_ts_") == std::string::npos) {
-    *value = *value + "_ts_" + std::to_string(now + 20);
+    *value = *value + "_ts_" + std::to_string(now + ttl);
   }
   else {
     uint64_t deadtime = std::stoi(value->substr(value->find("_ts_") + 4));
@@ -1183,14 +1184,14 @@ Status DBImpl::Get(const ReadOptions& options, const Slice& key,
 
     /* TODO: Add TTL Version Get() */
     if (mem->Get(lkey, value, &s)) {
-      isLive(key, value, s);
+      isLive(key, value, s, ttl);
       // Done
     } else if (imm != nullptr && imm->Get(lkey, value, &s)) {
-      isLive(key, value, s);
+      isLive(key, value, s, ttl);
       // Done
     } else {
       s = current->Get(options, lkey, value, &stats);
-      if (s.ok()) isLive(key, value, s);
+      if (s.ok()) isLive(key, value, s, ttl);
       have_stat_update = true;
     }
     /* --------------------------- */
@@ -1562,12 +1563,22 @@ Status DB::Open(const Options& options, const std::string& dbname, DB** dbptr) {
   // Recover handles create_if_missing, error_if_exists
   bool save_manifest = false;
   Status s = impl->Recover(&edit, &save_manifest);
+
+  if (!s.ok()) {
+    std::cerr << "Recover failed: " << s.ToString() << std::endl;
+  }
+
   if (s.ok() && impl->mem_ == nullptr) {
     // Create new log and a corresponding memtable.
     uint64_t new_log_number = impl->versions_->NewFileNumber();
     WritableFile* lfile;
     s = options.env->NewWritableFile(LogFileName(dbname, new_log_number),
                                      &lfile);
+
+    if (!s.ok()) {
+      std::cerr << "NewWritableFile failed: " << s.ToString() << std::endl;
+    }
+
     if (s.ok()) {
       edit.SetLogNumber(new_log_number);
       impl->logfile_ = lfile;
@@ -1581,6 +1592,11 @@ Status DB::Open(const Options& options, const std::string& dbname, DB** dbptr) {
     edit.SetPrevLogNumber(0);  // No older logs needed after recovery.
     edit.SetLogNumber(impl->logfile_number_);
     s = impl->versions_->LogAndApply(&edit, &impl->mutex_);
+
+    if (!s.ok()) {
+      std::cerr << "LogAndApply failed: " << s.ToString() << std::endl;
+    }
+
   }
   if (s.ok()) {
     impl->RemoveObsoleteFiles();
