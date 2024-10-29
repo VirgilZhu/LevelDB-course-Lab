@@ -54,6 +54,7 @@ class LEVELDB_EXPORT DB {
                      DB** dbptr);
 
   DB() = default;
+  uint64_t ttl;
 
   DB(const DB&) = delete;
   DB& operator=(const DB&) = delete;

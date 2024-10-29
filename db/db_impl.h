@@ -28,6 +28,7 @@ class VersionSet;
 
 class DBImpl : public DB {
  public:
+  uint64_t ttl;
   DBImpl(const Options& options, const std::string& dbname);
 
   DBImpl(const DBImpl&) = delete;

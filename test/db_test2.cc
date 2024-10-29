@@ -1,13 +1,9 @@
 #include "leveldb/db.h"
 #include "leveldb/filter_policy.h"
-
 #include <iostream>
 #include <cstdlib>
 #include <ctime>
-
 using namespace leveldb;
-
-using namespace std;
 
 constexpr int value_size = 2048;
 constexpr int data_size = 256 << 20;
@@ -25,7 +21,7 @@ Status OpenDB(std::string dbName, DB **db) {
 void InsertData(DB *db) {
   WriteOptions writeOptions;
   int key_num = data_size / value_size;
-  srand(static_cast<unsigned int>(time(0)));
+  srand(0);
 
   for (int i = 0; i < key_num; i++) {
     int key_ = rand() % key_num+1;
@@ -39,14 +35,15 @@ void InsertData(DB *db) {
 void GetData(DB *db, int size = (1 << 30)) {
   ReadOptions readOptions;
   int key_num = data_size / value_size;
-  
+
   // 点查
-  srand(static_cast<unsigned int>(time(0)));
+  srand(0);
   for (int i = 0; i < 100; i++) {
     int key_ = rand() % key_num+1;
     std::string key = std::to_string(key_);
     std::string value;
     db->Get(readOptions, key, &value);
+    std::cout << value << std::endl;
   }
 
   // 范围查询
@@ -70,7 +67,6 @@ int main() {
     GetData(db);
     delete db;
   }
-  
+
   return 0;
 }
-
