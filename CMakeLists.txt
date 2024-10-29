@@ -518,6 +518,11 @@ if(LEVELDB_INSTALL)
   )
 endif(LEVELDB_INSTALL)
 
+add_executable(db_test1
+        "${PROJECT_SOURCE_DIR}/test/db_test1.cc"
+)
+target_link_libraries(db_test1 leveldb)
+
 
 add_executable(db_test2
         "${PROJECT_SOURCE_DIR}/test/db_test2.cc"
