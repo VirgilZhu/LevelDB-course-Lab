@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
+#include <chrono>
+
 #include "db/db_impl.h"
 
 #include <algorithm>
@@ -978,7 +980,21 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
         // Therefore this deletion marker is obsolete and can be dropped.
         drop = true;
       }
-
+      /* TODO: Add TTL Version Compaction Drop Condition */
+      else {
+        std::string user_value = input->value().ToString();
+        uint64_t now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+        if (user_value.find("_ts_") == std::string::npos) {
+          input->value() = user_value + "_ts_" + std::to_string(now + 20);
+        }
+        else {
+          uint64_t deadtime = std::stoi(user_value.substr(user_value.find("_ts_") + 4));
+          if (now >= deadtime) {
+            drop = true;
+          }
+        }
+      }
+      /* ----------------------------------------------- */
       last_sequence_for_key = ikey.sequence;
     }
 #if 0
@@ -1117,6 +1133,17 @@ int64_t DBImpl::TEST_MaxNextLevelOverlappingBytes() {
   return versions_->MaxNextLevelOverlappingBytes();
 }
 
+/* TODO: Add TTL Version isLive() */
+Status isLive(const Slice& key, std::string* value, Status& s) {
+  uint64_t now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+  uint64_t deadtime = std::stoi(value->substr(value->find("_ts_") + 4));
+  if (now >= deadtime) {
+    s = Status::NotFound(key);
+  }
+  return s;
+}
+/* --------------------------- */
+
 Status DBImpl::Get(const ReadOptions& options, const Slice& key,
                    std::string* value) {
   Status s;
@@ -1144,14 +1171,21 @@ Status DBImpl::Get(const ReadOptions& options, const Slice& key,
     mutex_.Unlock();
     // First look in the memtable, then in the immutable memtable (if any).
     LookupKey lkey(key, snapshot);
+
+    /* TODO: Add TTL Version Get() */
     if (mem->Get(lkey, value, &s)) {
+      isLive(key, value, s);
       // Done
     } else if (imm != nullptr && imm->Get(lkey, value, &s)) {
+      isLive(key, value, s);
       // Done
     } else {
       s = current->Get(options, lkey, value, &stats);
+      if (s.ok()) isLive(key, value, s);
       have_stat_update = true;
     }
+    /* --------------------------- */
+
     mutex_.Lock();
   }
 
@@ -1490,6 +1524,17 @@ Status DB::Put(const WriteOptions& opt, const Slice& key, const Slice& value) {
   batch.Put(key, value);
   return Write(opt, &batch);
 }
+
+/* TODO: Add TTL Version Put() */
+Status DBImpl::Put(const WriteOptions& opt, const Slice& key, const Slice& value, uint64_t ttl){
+  WriteBatch batch;
+  auto now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+  auto end = now + ttl;
+  Slice value_timestamp = Slice(value.ToString() + "_ts_" + std::to_string(end));
+  batch.Put(key, value_timestamp);
+  return Write(opt, &batch);
+}
+/* --------------------------- */
 
 Status DB::Delete(const WriteOptions& opt, const Slice& key) {
   WriteBatch batch;

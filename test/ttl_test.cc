@@ -99,9 +99,9 @@ TEST(TestTTL, CompactionTTL) {
 
     db->CompactRange(nullptr, nullptr);
 
-    leveldb::Range ranges[1];
+//    leveldb::Range ranges[1];
     ranges[0] = leveldb::Range("-", "A");
-    uint64_t sizes[1];
+//    uint64_t sizes[1];
     db->GetApproximateSizes(ranges, 1, sizes);
     ASSERT_EQ(sizes[0], 0);
 }
