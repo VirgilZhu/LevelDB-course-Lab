@@ -1,10 +1,6 @@
-
-
 #include "gtest/gtest.h"
-
 #include "leveldb/env.h"
 #include "leveldb/db.h"
-
 
 using namespace leveldb;
 
@@ -20,7 +16,7 @@ Status OpenDB(std::string dbName, DB **db) {
 void InsertData(DB *db, uint64_t ttl/* second */) {
   WriteOptions writeOptions;
   int key_num = data_size / value_size;
-  srand(static_cast<unsigned int>(time(0)));
+  srand(0);
 
   for (int i = 0; i < key_num; i++) {
     int key_ = rand() % key_num+1;
@@ -35,7 +31,7 @@ void GetData(DB *db, int size = (1 << 30)) {
   int key_num = data_size / value_size;
   
   // 点查
-  srand(static_cast<unsigned int>(time(0)));
+  srand(0);
   for (int i = 0; i < 100; i++) {
     int key_ = rand() % key_num+1;
     std::string key = std::to_string(key_);
@@ -58,7 +54,7 @@ TEST(TestTTL, ReadTTL) {
     ReadOptions readOptions;
     Status status;
     int key_num = data_size / value_size;
-    srand(static_cast<unsigned int>(time(0)));
+    srand(0);
     for (int i = 0; i < 100; i++) {
         int key_ = rand() % key_num+1;
         std::string key = std::to_string(key_);
@@ -99,9 +95,9 @@ TEST(TestTTL, CompactionTTL) {
 
     db->CompactRange(nullptr, nullptr);
 
-//    leveldb::Range ranges[1];
+    // leveldb::Range ranges[1];
     ranges[0] = leveldb::Range("-", "A");
-//    uint64_t sizes[1];
+    // uint64_t sizes[1];
     db->GetApproximateSizes(ranges, 1, sizes);
     ASSERT_EQ(sizes[0], 0);
 }
