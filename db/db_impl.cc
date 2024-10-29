@@ -1135,10 +1135,19 @@ int64_t DBImpl::TEST_MaxNextLevelOverlappingBytes() {
 
 /* TODO: Add TTL Version isLive() */
 Status isLive(const Slice& key, std::string* value, Status& s) {
-  uint64_t now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
-  uint64_t deadtime = std::stoi(value->substr(value->find("_ts_") + 4));
-  if (now >= deadtime) {
+  if (value->empty()) {
     s = Status::NotFound(key);
+    return s;
+  }
+  uint64_t now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+  if (value->find("_ts_") == std::string::npos) {
+    *value = *value + "_ts_" + std::to_string(now + 20);
+  }
+  else {
+    uint64_t deadtime = std::stoi(value->substr(value->find("_ts_") + 4));
+    if (now >= deadtime) {
+      s = Status::NotFound(key);
+    }
   }
   return s;
 }

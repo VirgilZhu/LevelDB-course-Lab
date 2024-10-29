@@ -7,6 +7,8 @@
 
 using namespace leveldb;
 
+using namespace std;
+
 constexpr int value_size = 2048;
 constexpr int data_size = 256 << 20;
 
