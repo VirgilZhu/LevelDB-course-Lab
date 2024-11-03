@@ -899,6 +899,7 @@ Status DBImpl::InstallCompactionResults(CompactionState* compact) {
   return versions_->LogAndApply(compact->compaction->edit(), &mutex_);
 }
 
+/* TODO: Check if a string consists entirely of digits */
 bool isAllDigits(const std::string& str) {
     for (char c : str) {
         if (!isdigit(c)) {
@@ -907,6 +908,7 @@ bool isAllDigits(const std::string& str) {
     }
     return true;
 }
+/* --------------------------- */
 
 Status DBImpl::DoCompactionWork(CompactionState* compact) {
   const uint64_t start_micros = env_->NowMicros();
