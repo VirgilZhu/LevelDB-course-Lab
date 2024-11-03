@@ -1,8 +1,5 @@
-<<<<<<< HEAD
-=======
 #include <chrono>
 
->>>>>>> virgil
 #include "gtest/gtest.h"
 #include "leveldb/env.h"
 #include "leveldb/db.h"
@@ -13,6 +10,9 @@ constexpr int value_size = 2048;
 constexpr int data_size = 128 << 20;
 
 Status OpenDB(std::string dbName, DB **db) {
+  std::string rm_command = "rm -rf " + dbName;
+  system(rm_command.c_str());
+  
   Options options;
   options.create_if_missing = true;
   return DB::Open(options, dbName, db);
@@ -21,11 +21,7 @@ Status OpenDB(std::string dbName, DB **db) {
 void InsertData(DB *db, uint64_t ttl/* second */) {
   WriteOptions writeOptions;
   int key_num = data_size / value_size;
-<<<<<<< HEAD
-  srand(0);
-=======
   srand(42);
->>>>>>> virgil
 
   for (int i = 0; i < key_num; i++) {
     int key_ = rand() % key_num+1;
@@ -34,6 +30,15 @@ void InsertData(DB *db, uint64_t ttl/* second */) {
     db->ttl = ttl;
     db->Put(writeOptions, key, value, ttl);
   }
+
+  // for (int i = 0; i < key_num; i++) {
+  //   int key_ = rand() % key_num+1;
+  //   std::string key = std::to_string(key_ );
+  //   std::string value = "aaaaaa_ts_5678aaaaaa";
+  //   db->Put(writeOptions, key, value);
+  // }
+  
+
 }
 
 void GetData(DB *db, int size = (1 << 30)) {
@@ -41,11 +46,7 @@ void GetData(DB *db, int size = (1 << 30)) {
   int key_num = data_size / value_size;
   
   // 点查
-<<<<<<< HEAD
-  srand(0);
-=======
   srand(42);
->>>>>>> virgil
   for (int i = 0; i < 100; i++) {
     int key_ = rand() % key_num+1;
     std::string key = std::to_string(key_);

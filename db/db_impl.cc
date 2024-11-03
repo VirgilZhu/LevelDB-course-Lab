@@ -11,6 +11,7 @@
 #include <atomic>
 #include <cstdint>
 #include <cstdio>
+#include <cctype>
 #include <set>
 #include <string>
 #include <vector>
@@ -594,7 +595,8 @@ void DBImpl::CompactRange(const Slice* begin, const Slice* end) {
     }
   }
   TEST_CompactMemTable();  // TODO(sanjay): Skip if memtable does not overlap
-  for (int level = 0; level < max_level_with_files; level++) {
+  for (int level = 0; level <= max_level_with_files; level++) {
+  // for (int level = 0; level < max_level_with_files; level++) {
     TEST_CompactRange(level, begin, end);
   }
 }
@@ -897,6 +899,15 @@ Status DBImpl::InstallCompactionResults(CompactionState* compact) {
   return versions_->LogAndApply(compact->compaction->edit(), &mutex_);
 }
 
+bool isAllDigits(const std::string& str) {
+    for (char c : str) {
+        if (!isdigit(c)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 Status DBImpl::DoCompactionWork(CompactionState* compact) {
   const uint64_t start_micros = env_->NowMicros();
   int64_t imm_micros = 0;  // Micros spent doing imm_ compactions
@@ -985,13 +996,23 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
       else {
         std::string user_value = input->value().ToString();
         uint64_t now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
-        if (user_value.find("_ts_") == std::string::npos) {
-          input->value() = user_value + "_ts_" + std::to_string(now + ttl);
-        }
-        else {
-          uint64_t deadtime = std::stoi(user_value.substr(user_value.find("_ts_") + 4));
-          if (now >= deadtime) {
-            drop = true;
+        // if (user_value.find("_ts_") == std::string::npos) {
+        //   input->value() = user_value + "_ts_" + std::to_string(now + ttl);
+        // }
+        // else {
+        //   uint64_t deadtime = std::stoi(user_value.substr(user_value.find("_ts_") + 4));
+        //   if (now >= deadtime) {
+        //     drop = true;
+        //   }
+        // }
+        size_t pos = user_value.rfind("_ts_");
+        if (pos != std::string::npos){
+          std::string timestampStr = user_value.substr(pos + 4);
+          if (isAllDigits(timestampStr)) {
+            uint64_t deadtime = std::stoull(timestampStr);
+            if (now >= deadtime) {
+              drop = true;
+            }
           }
         }
       }
@@ -1135,24 +1156,42 @@ int64_t DBImpl::TEST_MaxNextLevelOverlappingBytes() {
 }
 
 /* TODO: Add TTL Version isLive() */
-Status isLive(const Slice& key, std::string* value, Status& s, uint64_t ttl) {
+// Status isLive(const Slice& key, std::string* value, Status& s, uint64_t ttl) {
+//   if (value->empty()) {
+//     s = Status::NotFound(key);
+//     return s;
+//   }
+//   uint64_t now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+//   if (value->find("_ts_") == std::string::npos) {
+//     *value = *value + "_ts_" + std::to_string(now + ttl);
+//   }
+//   else {
+//     uint64_t deadtime = std::stoi(value->substr(value->find("_ts_") + 4));
+//     if (now >= deadtime) {
+//       s = Status::NotFound(key);
+//     }
+//   }
+//   return s;
+// }
+/* --------------------------- */
+Status isLive(const Slice& key, std::string* value, Status& s) {
   if (value->empty()) {
     s = Status::NotFound(key);
     return s;
   }
   uint64_t now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
-  if (value->find("_ts_") == std::string::npos) {
-    *value = *value + "_ts_" + std::to_string(now + ttl);
-  }
-  else {
-    uint64_t deadtime = std::stoi(value->substr(value->find("_ts_") + 4));
-    if (now >= deadtime) {
-      s = Status::NotFound(key);
-    }
+  size_t pos = value->rfind("_ts_");
+  if (pos != std::string::npos){
+     std::string timestampStr = value->substr(pos + 4);
+     if (isAllDigits(timestampStr)) {
+        uint64_t deadtime = std::stoull(timestampStr);
+            if (now >= deadtime) {
+              s = Status::NotFound(key);
+            }
+      }
   }
   return s;
 }
-/* --------------------------- */
 
 Status DBImpl::Get(const ReadOptions& options, const Slice& key,
                    std::string* value) {
@@ -1184,14 +1223,17 @@ Status DBImpl::Get(const ReadOptions& options, const Slice& key,
 
     /* TODO: Add TTL Version Get() */
     if (mem->Get(lkey, value, &s)) {
-      isLive(key, value, s, ttl);
+      // isLive(key, value, s, ttl);
+      isLive(key, value, s);
       // Done
     } else if (imm != nullptr && imm->Get(lkey, value, &s)) {
-      isLive(key, value, s, ttl);
+      // isLive(key, value, s, ttl);
+      isLive(key, value, s);
       // Done
     } else {
       s = current->Get(options, lkey, value, &stats);
-      if (s.ok()) isLive(key, value, s, ttl);
+      // if (s.ok()) isLive(key, value, s, ttl);
+      if (s.ok()) isLive(key, value, s);
       have_stat_update = true;
     }
     /* --------------------------- */
