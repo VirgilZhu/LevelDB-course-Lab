@@ -594,7 +594,8 @@ void DBImpl::CompactRange(const Slice* begin, const Slice* end) {
     }
   }
   TEST_CompactMemTable();  // TODO(sanjay): Skip if memtable does not overlap
-  for (int level = 0; level < max_level_with_files; level++) {
+  for (int level = 0; level <= max_level_with_files; level++) {
+//  for (int level = 0; level < config::kNumLevels - 1; level++) {
     TEST_CompactRange(level, begin, end);
   }
 }
